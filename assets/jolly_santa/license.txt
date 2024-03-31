@@ -1,0 +1,11 @@
+Model Information:
+* title:	Jolly Santa
+* source:	https://sketchfab.com/3d-models/jolly-santa-70b151ec7e16448186e49a7ce29c518e
+* author:	Tomato Owl (https://sketchfab.com/tomato_owl)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Jolly Santa" (https://sketchfab.com/3d-models/jolly-santa-70b151ec7e16448186e49a7ce29c518e) by Tomato Owl (https://sketchfab.com/tomato_owl) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

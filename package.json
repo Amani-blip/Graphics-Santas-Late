@@ -1,0 +1,24 @@
+{
+  "name": "graphics-santas-late",
+  "version": "1.0.0",
+  "description": "",
+  "main": "SantasLate.js",
+  "dependencies": {
+    "dat.gui": "^0.7.9",
+    "esbuild": "^0.19.11",
+    "express": "^4.19.2",
+    "gl-matrix": "^3.4.3",
+    "nanoid": "^3.3.7",
+    "picocolors": "^1.0.0",
+    "postcss": "^8.4.35",
+    "rollup": "^4.9.4",
+    "source-map-js": "^1.0.2",
+    "three": "^0.160.1",
+    "vite": "^5.1.2"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC"
+}
