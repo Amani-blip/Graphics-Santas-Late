@@ -2,6 +2,7 @@
  * CSI4130 Assignment 4
  * Amani Farid 300173889
  * "Santa Sleigh" (https://skfb.ly/6XrxO) by PatelDev is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/).
+ * "Jolly Santa" (https://skfb.ly/oONTG) by Tomato Owl is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/).
  */
 
 
@@ -25,6 +26,10 @@ let boolClear = false;
 
 let snowflakeCount, snowflakeGeometry, snowflakeVertices, snowflakeMaterial, snowflakes;
 
+let points; 
+let mostLeftPoint; 
+let mostRightPoint; 
+
 // curve geometries and meshes
 let tubeGeometry = new THREE.TubeGeometry(curve,300, 0.08, 8, false);
 let tubeMaterial = new THREE.MeshBasicMaterial({ color: 'white'});
@@ -41,9 +46,9 @@ var defaultControls = {
     ps: 1.1, 
     py: 0.3,
     pz: 0.9,
-    alpha_x: 1, 
+    alpha_x: 1 , 
     alpha_s:1, 
-    alpha_y: 1,
+    alpha_y: 0,
     alpha_z: 1,
     displayMesh:false
     
@@ -61,6 +66,8 @@ let ws = 1.5; // Frequency for s
 let wy = 2;   // Frequency for y
 let wz = 3;   // Frequency for z
 
+
+let mixer, action; // for animations
 
 function init() {
     // Scene
@@ -94,9 +101,22 @@ function init() {
         'assets/jolly_santa/scene.gltf', 
         function (gltf) {
             model = gltf.scene; 
+            let animations = gltf.animations;
             scene.add(model);
 
+            mixer = new THREE.AnimationMixer(model);
+            action = mixer.clipAction(animations[3]);
+            // Set the animation to play once and stop
+            action.setLoop(THREE.LoopOnce);  // Play the animation once
+            action.clampWhenFinished = true;  // Stop the animation when it's finished
+
+            // for (let i = 0; i < animations.length; i++) {
+            //     let action = mixer.clipAction(animations[i]);
+            //     action.play();
+            // }
+
             model.scale.set(25, 25, 25); 
+            
            // model.rotateY(-Math.PI/2);
         },
         function (xhr) {
@@ -148,6 +168,15 @@ function init() {
     roof.rotation.y = Math.PI / 4; // Align the roof's corners with the house body
     house.add(roof);  // Add the roof to the house group
 
+    
+    // Roof TODO: Not showing
+    const chimneyGeometry = new THREE.BoxGeometry(3, 2.7, 4);
+    const chimneyMaterial = new THREE.MeshBasicMaterial({ color: '#120d0a' });
+    const chimney = new THREE.Mesh(chimneyGeometry, chimneyGeometry);
+    chimney.position.set(5, 5, 0); 
+    //chimney.rotation.y = Math.PI / 4; // Align the roof's corners with the house body
+    house.add(chimney);  // chimney
+
         // Window and door sizing
     const windowWidth = 0.3;
     const windowHeight = 0.3;
@@ -157,16 +186,16 @@ function init() {
     const doorHeight = 1.0; // Example height for the door
     const doorDepth = 0.1;
 
-    // Create materials
+    // Housing material 
     const windowMaterial = new THREE.MeshStandardMaterial({
         color: 'black',
         emissive: 0xffff00,
         emissiveIntensity: 1
     });
+    const doorMaterial = new THREE.MeshStandardMaterial({ color: 'brown' });
+    
 
-    const doorMaterial = new THREE.MeshStandardMaterial({ color: 'black' });
-
-    // Create geometries
+    // Housing geometry
     const windowGeometry = new THREE.BoxGeometry(windowWidth, windowHeight, windowDepth);
     const doorGeometry = new THREE.BoxGeometry(doorWidth, doorHeight, doorDepth);
 
@@ -178,18 +207,18 @@ function init() {
     }
 
     // Add windows
-    createWindow(-1.5, 3, 1.5);
     createWindow(-1, 3, 1.5);
+    createWindow(-0.5, 3, 1.5);
     createWindow(1, 3, 1.5);
     createWindow(0.5, 3, 1.5);
-    createWindow(-1.5, 2.5, 1.5);
     createWindow(-1, 2.5, 1.5);
+    createWindow(-0.5, 2.5, 1.5);
     createWindow(1, 2.5, 1.5);
     createWindow(0.5, 2.5, 1.5);
 
     // Create and add the door
     const doorMesh = new THREE.Mesh(doorGeometry, doorMaterial);
-    doorMesh.position.set(0, 0.5, 1.5);
+    doorMesh.position.set(0, 1, 1.5);
     house.add(doorMesh);
 
     // Now scale the entire house group
@@ -203,22 +232,23 @@ function init() {
 // Access the position attribute of the geometry
     const positions = groundGeometry.attributes.position;
 
-    // randomize the z component of each vertex to create textured snow
-    for (let i = 0; i < positions.count; i++) {
-        // Randomly adjust the z position of each vertex
-        positions.setZ(i, Math.random() * 10); // height variation
-    }
+    //TO MAKE THE GROUND BUMPY, UNCOMMENT
+    // // randomize the z component of each vertex to create textured snow
+    // for (let i = 0; i < positions.count; i++) {
+    //     // Randomly adjust the z position of each vertex
+    //     positions.setZ(i, Math.random() * 10); // height variation
+    // }
 
-    // Notify Three.js that the position data has changed
-    positions.needsUpdate = true;
+    // // Notify Three.js that the position data has changed
+    // positions.needsUpdate = true;
 
-    // Recompute normals for the lighting calculations
-    groundGeometry.computeVertexNormals();
+    // // Recompute normals for the lighting calculations
+    // groundGeometry.computeVertexNormals();
 
-    const groundMaterial = new THREE.MeshLambertMaterial({ color: 'white' });
-    const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-    ground.position.y = -10;
-    ground.rotation.x = -Math.PI / 2; // Rotate the ground to be horizontal
+     const groundMaterial = new THREE.MeshLambertMaterial({ color: 'white' });
+     const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+    // ground.position.y = -10;
+     ground.rotation.x = -Math.PI / 2; // Rotate the ground to be horizontal
     scene.add(ground);
 
     // Create a raycaster
@@ -376,11 +406,33 @@ function init() {
     }
     );
 
+    // Initialize the most left and most right points to the first point
+
+
+    console.log(mostLeftPoint)
+
     // so that t can be controlled and set back to 0 once it reaches 1
     setInterval(() => {
         t += increment;
         n += increment; 
         if (model) {
+
+            points = curve.getPoints(100);
+            mostLeftPoint = points[0];
+            let mostRightPoint = points[0];
+        
+            // Iterate over the points
+            for (let i = 1; i < points.length; i++) {
+                // Update the most left point if necessary
+                if (points[i].x < mostLeftPoint.x) {
+                    mostLeftPoint = points[i];
+                }
+        
+                // Update the most right point if necessary
+                if (points[i].x > mostRightPoint.x) {
+                    mostRightPoint = points[i];
+                }
+            }
 
             //Damping Note: Ax_n = (alpha_x^n)*Ax_0 is the direct calculation for Ax_n = Ax_n-1*alpha_x
             curve.Ax = (alpha_x**n)*Ax;
@@ -399,10 +451,19 @@ function init() {
     
             const pt = curve.getPoint(t);
     
-            model.position.set(pt.x, pt.y, pt.z);
+            model.position.set(pt.x+0.05, pt.y+0.25, pt.z);
             sleighModel.position.set(pt.x, pt.y, pt.z);
+
+            if (pt.x == mostLeftPoint.x || pt.x == mostRightPoint.x) {
+                model.rotateY(Math.PI);
+                sleighModel.rotateY(Math.PI);
+            }
+
+
+            
     
         }
+
         if (t >= 1) {
             t = 0; //t returns to 0 for the curve parameter 
         }
@@ -428,6 +489,11 @@ function render() {
     flycontrols.update(delta); // Update the controls based on the elapsed time
 
     renderer.render(scene, cameraFront);
+
+    if (mixer) {
+        mixer.update(delta);
+    }
+
 
     // Simulate snow falling by updating the positions of the snowflakes
     let positions = snowflakes.geometry.attributes.position.array;
@@ -460,4 +526,13 @@ function onWindowResize() {
     cameraTop.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
 }
+// Add an event listener for the keydown event
+window.addEventListener('keydown', function(event) {
+    // If the pressed key is the spacebar, play the animation
+    if (event.code === 'Space') {
+        action.reset();
+        action.play();
+    }
+});
+
 init();
