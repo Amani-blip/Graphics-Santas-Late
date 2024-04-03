@@ -8,6 +8,10 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { GUI } from "dat.gui";
+import { FlyControls } from 'three/examples/jsm/controls/FlyControls.js';
+
+let clock = new THREE.Clock();
+
 
 
 let scene, renderer, cameraFront, cameraTop, curve, gui;
@@ -45,10 +49,18 @@ var defaultControls = {
     
 }
 
+let flycontrols;
+
 // initial amplitudes a
-let Ax = 20, As = 2, Ay = 0, Az = 10;
-let wx = 3.1, ws = 3.3, wy = 1.7, wz = 2.6;
+let Ax = 20, As = 2, Ay = 9, Az = 10;
+//let wx = 3.1, ws = 3.3, wy = 0, wz = 2.6;
 let alpha_x, alpha_s, alpha_y, alpha_z;
+
+let wx = 1;   // Frequency for x
+let ws = 1.5; // Frequency for s
+let wy = 2;   // Frequency for y
+let wz = 3;   // Frequency for z
+
 
 function init() {
     // Scene
@@ -111,17 +123,128 @@ function init() {
         }
     );
 
+    // Create a group for the house
+    const house = new THREE.Group();
 
-    // Snowy ground
-    const groundGeometry = new THREE.PlaneGeometry(1000, 500);
+    // Load the texture
+    const textureLoader = new THREE.TextureLoader();
+    const brickTexture = textureLoader.load('assets/brick_texture.jpg'); 
+
+    // Create material with texture
+    const brickMaterial = new THREE.MeshLambertMaterial({ map: brickTexture });
+
+    // House body
+    const bodyGeometry = new THREE.BoxGeometry(3,4, 3);
+    //const bodyMaterial = new THREE.MeshBasicMaterial({ color: 'black' });
+    const body = new THREE.Mesh(bodyGeometry, brickMaterial);
+    body.position.set(0, 2.5, 0);  
+    house.add(body);  // Add the body to the house group
+
+    // Roof
+    const roofGeometry = new THREE.ConeGeometry(3, 2.7, 4);
+    const roofMaterial = new THREE.MeshBasicMaterial({ color: '#120d0a' });
+    const roof = new THREE.Mesh(roofGeometry, roofMaterial);
+    roof.position.set(0, 5.2, 0); 
+    roof.rotation.y = Math.PI / 4; // Align the roof's corners with the house body
+    house.add(roof);  // Add the roof to the house group
+
+        // Window and door sizing
+    const windowWidth = 0.3;
+    const windowHeight = 0.3;
+    const windowDepth = 0.1;
+
+    const doorWidth = 0.6; // Example width for the door
+    const doorHeight = 1.0; // Example height for the door
+    const doorDepth = 0.1;
+
+    // Create materials
+    const windowMaterial = new THREE.MeshStandardMaterial({
+        color: 'black',
+        emissive: 0xffff00,
+        emissiveIntensity: 1
+    });
+
+    const doorMaterial = new THREE.MeshStandardMaterial({ color: 'black' });
+
+    // Create geometries
+    const windowGeometry = new THREE.BoxGeometry(windowWidth, windowHeight, windowDepth);
+    const doorGeometry = new THREE.BoxGeometry(doorWidth, doorHeight, doorDepth);
+
+    // Create and position windows function
+    function createWindow(x, y, z) {
+        const windowMesh = new THREE.Mesh(windowGeometry, windowMaterial);
+        windowMesh.position.set(x, y, z);
+        house.add(windowMesh);
+    }
+
+    // Add windows
+    createWindow(-1.5, 3, 1.5);
+    createWindow(-1, 3, 1.5);
+    createWindow(1, 3, 1.5);
+    createWindow(0.5, 3, 1.5);
+    createWindow(-1.5, 2.5, 1.5);
+    createWindow(-1, 2.5, 1.5);
+    createWindow(1, 2.5, 1.5);
+    createWindow(0.5, 2.5, 1.5);
+
+    // Create and add the door
+    const doorMesh = new THREE.Mesh(doorGeometry, doorMaterial);
+    doorMesh.position.set(0, 0.5, 1.5);
+    house.add(doorMesh);
+
+    // Now scale the entire house group
+    house.scale.set(0.5, 0.5, 0.5);
+    scene.add(house);
+
+
+
+    const groundGeometry = new THREE.PlaneGeometry(500, 500, 64, 32);
+
+// Access the position attribute of the geometry
+    const positions = groundGeometry.attributes.position;
+
+    // randomize the z component of each vertex to create textured snow
+    for (let i = 0; i < positions.count; i++) {
+        // Randomly adjust the z position of each vertex
+        positions.setZ(i, Math.random() * 10); // height variation
+    }
+
+    // Notify Three.js that the position data has changed
+    positions.needsUpdate = true;
+
+    // Recompute normals for the lighting calculations
+    groundGeometry.computeVertexNormals();
+
     const groundMaterial = new THREE.MeshLambertMaterial({ color: 'white' });
     const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-    ground.position.y = -30
+    ground.position.y = -10;
     ground.rotation.x = -Math.PI / 2; // Rotate the ground to be horizontal
     scene.add(ground);
 
-    // Falling snow
+    // Create a raycaster
+    const raycaster = new THREE.Raycaster();
 
+    // The starting point of the ray should be above the highest point of the ground
+    // You might need to adjust this based on your scene's scale
+    const rayStartHeight = 100; 
+
+    // Set the raycaster starting point directly above the house's position
+    const rayOrigin = new THREE.Vector3(house.position.x, rayStartHeight, house.position.z);
+    raycaster.set(rayOrigin, new THREE.Vector3(0, -1, 0)); // pointing downwards
+
+    // Calculate intersects
+    const intersects = raycaster.intersectObject(ground);
+
+    if (intersects.length > 0) {
+        // Assuming the house's pivot is at its base, set the house on the ground
+        // You might need to add half the house's height if the pivot is in the middle
+        house.position.y = intersects[0].point.y + (houseBodyHeight / 2) + roofHeight;
+    } else {
+        console.warn('No intersection found - make sure the house is above the ground mesh');
+    }
+
+    const helper = new THREE.ArrowHelper(raycaster.ray.direction, raycaster.ray.origin, 100, 0xff0000);
+    scene.add(helper);
    
     snowflakeCount = 10000;
     snowflakeGeometry = new THREE.BufferGeometry();
@@ -285,6 +408,12 @@ function init() {
         }
 
     }, 30); 
+    flycontrols = new FlyControls(cameraFront, renderer.domElement);
+    flycontrols.movementSpeed = 10;  // Adjust movement speed as needed
+    flycontrols.domElement = renderer.domElement;
+    flycontrols.rollSpeed = Math.PI / 24;  // Adjust roll speed as needed
+    flycontrols.autoForward = false;
+    flycontrols.dragToLook = true;
 
     window.addEventListener('resize', onWindowResize, false);
 
@@ -295,7 +424,9 @@ function init() {
 function render() {
     requestAnimationFrame(render);
 
-    
+    const delta = clock.getDelta(); // Get the time elapsed since the last call to getDelta
+    flycontrols.update(delta); // Update the controls based on the elapsed time
+
     renderer.render(scene, cameraFront);
 
     // Simulate snow falling by updating the positions of the snowflakes
