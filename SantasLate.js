@@ -5,7 +5,7 @@
  * "Jolly Santa" (https://skfb.ly/oONTG) by Tomato Owl is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/).
  */
 
-
+import './ammo.js'
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { GUI } from "dat.gui";
@@ -69,6 +69,24 @@ let wz = 3;   // Frequency for z
 
 
 let mixer, action; // for animations
+
+Ammo().then( start )
+            
+            function start(){
+                setupPhysicsWorld();
+    }
+
+function setupPhysicsWorld(){
+
+    let collisionConfiguration  = new Ammo.btDefaultCollisionConfiguration(),
+        dispatcher              = new Ammo.btCollisionDispatcher(collisionConfiguration),
+        overlappingPairCache    = new Ammo.btDbvtBroadphase(),
+        solver                  = new Ammo.btSequentialImpulseConstraintSolver();
+
+    physicsWorld           = new Ammo.btDiscreteDynamicsWorld(dispatcher, overlappingPairCache, solver, collisionConfiguration);
+    physicsWorld.setGravity(new Ammo.btVector3(0, -10, 0));
+
+}
 
 function init() {
     // Scene
@@ -584,6 +602,10 @@ window.addEventListener('keydown', function(event) {
     if (event.code === 'Space') {
         action.reset();
         action.play();
+        const pt_local = curve.getPoint(t);  
+        console.log("present model: " + presentModel.position.x + " " + presentModel.position.y-0.5 + " " + presentModel.position.z);
+        presentModel.position.set(pt_local.x,pt_local.y,pt_local.z)
+        console.log("present model: " + presentModel.position.x + " " + presentModel.position.y + " " + presentModel.position.z);
     }
 });
 
