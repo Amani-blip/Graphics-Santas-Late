@@ -553,6 +553,11 @@ window.addEventListener('keydown', function(event) {
     if (event.code === 'Space') {
         action.reset();
         action.play();
+        const pt_local = curve.getPoint(t); 
+        presentModel.position.set(pt_local.x,pt_local.y,pt_local.z)
+        console.log("present model: " + presentModel.position.x + " " + presentModel.position.y-0.5 + " " + presentModel.position.z);
+        presentModel.position.set(pt_local.x,pt_local.y,pt_local.z)
+        console.log("present model: " + presentModel.position.x + " " + presentModel.position.y + " " + presentModel.position.z);
     }
 });
 
