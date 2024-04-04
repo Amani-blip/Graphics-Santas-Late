@@ -1,0 +1,11 @@
+Model Information:
+* title:	Present
+* source:	https://sketchfab.com/3d-models/present-3dab2a85b1c048eca160fc5961e9ef34
+* author:	holtkamp (https://sketchfab.com/holtkamp)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Present" (https://sketchfab.com/3d-models/present-3dab2a85b1c048eca160fc5961e9ef34) by holtkamp (https://sketchfab.com/holtkamp) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

@@ -10,6 +10,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { GUI } from "dat.gui";
 import { FlyControls } from 'three/examples/jsm/controls/FlyControls.js';
+import { vec3 } from 'three/examples/jsm/nodes/shadernode/ShaderNode';
 
 let clock = new THREE.Clock();
 
@@ -20,7 +21,7 @@ let t = 0;
 let n = 0; 
 let increment = 0.001;
 
-let model, sleighModel; 
+let model, sleighModel, presentModel; 
 
 let boolClear = false; 
 
@@ -142,6 +143,23 @@ function init() {
             console.error('An error happened', error);
         }
     );
+    // Load gltf
+    loader.load(
+        'assets/present/scene.gltf', 
+        function (gltf) {
+            presentModel = gltf.scene; 
+            scene.add(presentModel);
+            presentModel.position.set(5,5,5);
+            presentModel.scale.set(0.25, 0.25, 0.25);
+        },
+        function (xhr) {
+            console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+        },
+        function (error) {
+            console.error('An error happened', error);
+        }
+    );
+
 
     // Create a group for the house
     const house = new THREE.Group();
@@ -157,7 +175,7 @@ function init() {
     const bodyGeometry = new THREE.BoxGeometry(3,4, 3);
     //const bodyMaterial = new THREE.MeshBasicMaterial({ color: 'black' });
     const body = new THREE.Mesh(bodyGeometry, brickMaterial);
-    body.position.set(0, 2.5, 0);  
+    body.position.set(0, 2, 0);  
     house.add(body);  // Add the body to the house group
 
     // Roof
@@ -234,20 +252,20 @@ function init() {
 
     //TO MAKE THE GROUND BUMPY, UNCOMMENT
     // // randomize the z component of each vertex to create textured snow
-    // for (let i = 0; i < positions.count; i++) {
+    for (let i = 0; i < positions.count; i++) {
     //     // Randomly adjust the z position of each vertex
-    //     positions.setZ(i, Math.random() * 10); // height variation
-    // }
+         positions.setZ(i, Math.random() * 1); // height variation
+    }
 
     // // Notify Three.js that the position data has changed
-    // positions.needsUpdate = true;
+    positions.needsUpdate = true;
 
     // // Recompute normals for the lighting calculations
-    // groundGeometry.computeVertexNormals();
+    groundGeometry.computeVertexNormals();
 
      const groundMaterial = new THREE.MeshLambertMaterial({ color: 'white' });
      const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-    // ground.position.y = -10;
+     ground.position.y = 0;
      ground.rotation.x = -Math.PI / 2; // Rotate the ground to be horizontal
     scene.add(ground);
 
@@ -265,6 +283,7 @@ function init() {
     // Calculate intersects
     const intersects = raycaster.intersectObject(ground);
 
+    
     if (intersects.length > 0) {
         // Assuming the house's pivot is at its base, set the house on the ground
         // You might need to add half the house's height if the pivot is in the middle
@@ -273,8 +292,10 @@ function init() {
         console.warn('No intersection found - make sure the house is above the ground mesh');
     }
 
+
     const helper = new THREE.ArrowHelper(raycaster.ray.direction, raycaster.ray.origin, 100, 0xff0000);
     scene.add(helper);
+    
    
     snowflakeCount = 10000;
     snowflakeGeometry = new THREE.BufferGeometry();
@@ -314,7 +335,7 @@ function init() {
         }
         getPoint(t){
             //since three uses a range of t=0..1, for frequency you will need a factor of 2pi
-            var x  = this.Ax * Math.sin(this.wx*t*2*Math.PI + this.px) + this.As * Math.sin(this.ws * t * 2*Math.PI +this.ps);
+            var x  = this.Ax * Math.sin(this.wx*t*2*Math.PI + this.px)
             var y = this.Ay * Math.sin(this.wy*t*2*Math.PI + this.py);
             var z = this.Az*Math.sin(this.wz*2*t*Math.PI + this.pz);
             return new THREE.Vector3(x, y, z);
