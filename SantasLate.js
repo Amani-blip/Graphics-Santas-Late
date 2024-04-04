@@ -76,7 +76,7 @@ function init() {
    
     // Front View Camera
     cameraFront = new THREE.PerspectiveCamera(10, window.innerWidth / window.innerHeight, 0.1, 1000);
-    cameraFront.position.set(0, 10, 100); // Adjust to see the ground
+    cameraFront.position.set(0, 0, 100); // Adjust to see the ground
     cameraFront.lookAt(0, 0, 0);
 
    renderer = new THREE.WebGLRenderer
@@ -163,6 +163,7 @@ function init() {
 
     // Create a group for the house
     const house = new THREE.Group();
+    
 
     // Load the texture
     const textureLoader = new THREE.TextureLoader();
@@ -175,33 +176,62 @@ function init() {
     const bodyGeometry = new THREE.BoxGeometry(3,4, 3);
     //const bodyMaterial = new THREE.MeshBasicMaterial({ color: 'black' });
     const body = new THREE.Mesh(bodyGeometry, brickMaterial);
-    body.position.set(0, 2, 0);  
     house.add(body);  // Add the body to the house group
 
     // Roof
+    const roofGroup = new THREE.Group();
     const roofGeometry = new THREE.ConeGeometry(3, 2.7, 4);
-    const roofMaterial = new THREE.MeshBasicMaterial({ color: '#120d0a' });
+    const roofMaterial = new THREE.MeshBasicMaterial({ color: '#2b1d0e' });
     const roof = new THREE.Mesh(roofGeometry, roofMaterial);
-    roof.position.set(0, 5.2, 0); 
+    roof.position.set(0, 3, 0); 
     roof.rotation.y = Math.PI / 4; // Align the roof's corners with the house body
-    house.add(roof);  // Add the roof to the house group
+    roofGroup.add(roof);
 
     
-    // Roof TODO: Not showing
-    const chimneyGeometry = new THREE.BoxGeometry(3, 2.7, 4);
-    const chimneyMaterial = new THREE.MeshBasicMaterial({ color: '#120d0a' });
-    const chimney = new THREE.Mesh(chimneyGeometry, chimneyGeometry);
-    chimney.position.set(5, 5, 0); 
-    //chimney.rotation.y = Math.PI / 4; // Align the roof's corners with the house body
-    house.add(chimney);  // chimney
+    // // Roof TODO: Not showing
+    // const chimneyGeometry = new THREE.BoxGeometry(1, 2, 1);
+    // const chimneyMaterial = new THREE.MeshBasicMaterial({ color: '#120d0a' });
+    // const chimney = new THREE.Mesh(chimneyGeometry, brickMaterial);
+    // chimney.position.set(5, 5, 5); 
+    // //chimney.rotation.y = Math.PI / 4; // Align the roof's corners with the house body
+    // roofGroup.add(chimney);
+    // house.add(roofGroup); 
+
+    // Dimensions for the chimney planes
+    const width = 1;
+    const height = 2;
+    const depth = 1;
+    const thickness = 0.1;  // Define the thickness of the walls
+
+    // Create four boxes for the chimney walls
+    const wallFront = new THREE.Mesh(new THREE.BoxGeometry(width, height, thickness), brickMaterial);
+    const wallBack = new THREE.Mesh(new THREE.BoxGeometry(width, height, thickness), brickMaterial);
+    const wallLeft = new THREE.Mesh(new THREE.BoxGeometry(thickness, height, depth), brickMaterial);
+    const wallRight = new THREE.Mesh(new THREE.BoxGeometry(thickness, height, depth), brickMaterial);
+    
+    // Position the boxes to form the chimney
+    wallFront.position.set(0, 0, 0 + depth / 2 + thickness / 2);
+    wallBack.position.set(0, 0, 0 - depth / 2 - thickness / 2);
+    wallLeft.position.set(0 - width / 2 - thickness / 2, 0, 0);
+    wallRight.position.set(0 + width / 2 + thickness / 2, 0, 0);
+    
+    // Group the walls together
+    const chimneyGroup = new THREE.Group();
+    chimneyGroup.add(wallFront, wallBack, wallLeft, wallRight);
+    chimneyGroup.position.set(1,3,0)
+
+    // Add the chimney to the 
+    roofGroup.add(chimneyGroup);
+    house.add(roofGroup); 
+   
 
         // Window and door sizing
     const windowWidth = 0.3;
     const windowHeight = 0.3;
     const windowDepth = 0.1;
 
-    const doorWidth = 0.6; // Example width for the door
-    const doorHeight = 1.0; // Example height for the door
+    const doorWidth = 1; // Example width for the door
+    const doorHeight = 1.4; // Example height for the door
     const doorDepth = 0.1;
 
     // Housing material 
@@ -210,7 +240,7 @@ function init() {
         emissive: 0xffff00,
         emissiveIntensity: 1
     });
-    const doorMaterial = new THREE.MeshStandardMaterial({ color: 'brown' });
+    const doorMaterial = new THREE.MeshStandardMaterial({ color: '#3f2a14' });
     
 
     // Housing geometry
@@ -225,23 +255,24 @@ function init() {
     }
 
     // Add windows
-    createWindow(-1, 3, 1.5);
-    createWindow(-0.5, 3, 1.5);
-    createWindow(1, 3, 1.5);
-    createWindow(0.5, 3, 1.5);
-    createWindow(-1, 2.5, 1.5);
-    createWindow(-0.5, 2.5, 1.5);
-    createWindow(1, 2.5, 1.5);
-    createWindow(0.5, 2.5, 1.5);
+    createWindow(-1, 1, 1.5);
+    createWindow(-0.5, 1, 1.5);
+    createWindow(1, 1, 1.5);
+    createWindow(0.5, 1, 1.5);
+    createWindow(-1, 0.5, 1.5);
+    createWindow(-0.5, 0.5, 1.5);
+    createWindow(1, 0.5, 1.5);
+    createWindow(0.5, 0.5, 1.5);
 
     // Create and add the door
-    const doorMesh = new THREE.Mesh(doorGeometry, doorMaterial);
-    doorMesh.position.set(0, 1, 1.5);
-    house.add(doorMesh);
+    const door = new THREE.Mesh(doorGeometry, doorMaterial);
+    door.position.set(0, -1.25, 1.5);
+    house.add(door);
 
     // Now scale the entire house group
     house.scale.set(0.5, 0.5, 0.5);
     scene.add(house);
+    house.position.set(0,0,0);
 
 
 
@@ -265,7 +296,7 @@ function init() {
 
      const groundMaterial = new THREE.MeshLambertMaterial({ color: 'white' });
      const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-     ground.position.y = 0;
+     ground.position.y = -10;
      ground.rotation.x = -Math.PI / 2; // Rotate the ground to be horizontal
     scene.add(ground);
 
@@ -294,7 +325,7 @@ function init() {
 
 
     const helper = new THREE.ArrowHelper(raycaster.ray.direction, raycaster.ray.origin, 100, 0xff0000);
-    scene.add(helper);
+    //scene.add(helper);
     
    
     snowflakeCount = 10000;
