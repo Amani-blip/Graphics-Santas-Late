@@ -12,7 +12,7 @@ import { GUI } from "dat.gui";
 import { FlyControls } from 'three/examples/jsm/controls/FlyControls.js';
 import { vec3 } from 'three/examples/jsm/nodes/shadernode/ShaderNode';
 
-let clock = new THREE.Clock();
+let clock;
 
 
 
@@ -20,6 +20,8 @@ let scene, renderer, cameraFront, cameraTop, curve, gui;
 let t = 0;
 let n = 0; 
 let increment = 0.001;
+let physicsWorld, rigidBodies = [];
+let tmpTrans;
 
 let model, sleighModel, presentModel; 
 
@@ -30,6 +32,7 @@ let snowflakeCount, snowflakeGeometry, snowflakeVertices, snowflakeMaterial, sno
 let points; 
 let mostLeftPoint; 
 let mostRightPoint; 
+clock = new THREE.Clock();
 
 // curve geometries and meshes
 let tubeGeometry = new THREE.TubeGeometry(curve,300, 0.08, 8, false);
@@ -70,11 +73,6 @@ let wz = 3;   // Frequency for z
 
 let mixer, action; // for animations
 
-Ammo().then( start )
-            
-            function start(){
-                setupPhysicsWorld();
-    }
 
 function setupPhysicsWorld(){
 
@@ -85,11 +83,22 @@ function setupPhysicsWorld(){
 
     physicsWorld           = new Ammo.btDiscreteDynamicsWorld(dispatcher, overlappingPairCache, solver, collisionConfiguration);
     physicsWorld.setGravity(new Ammo.btVector3(0, -10, 0));
-
 }
+
+Ammo().then( start )
+            
+function start(){
+            tmpTrans = new Ammo.btTransform();
+            setupPhysicsWorld();
+            init();
+}
+
 
 function init() {
     // Scene
+
+    
+
     scene = new THREE.Scene();
    
     // Front View Camera
@@ -167,7 +176,7 @@ function init() {
         function (gltf) {
             presentModel = gltf.scene; 
             scene.add(presentModel);
-            presentModel.position.set(5,5,5);
+            presentModel.position.set(0,5,5);
             presentModel.scale.set(0.25, 0.25, 0.25);
         },
         function (xhr) {
@@ -178,6 +187,39 @@ function init() {
         }
     );
 
+    let pos = {x: 5, y: 5, z: 5};
+    let scale = {x: .5, y: .5, z: .5};
+    let quat = {x: 0, y: 0, z: 0, w: 1};
+    let mass = 0.00001;
+
+    //threeJS Section
+    let blockPlane = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshPhongMaterial({color: 0xa0afa4}));
+
+    blockPlane.position.set(pos.x, pos.y, pos.z);
+    blockPlane.scale.set(scale.x, scale.y, scale.z);
+
+    blockPlane.castShadow = true;
+    blockPlane.receiveShadow = true;
+
+    scene.add(blockPlane);
+    blockPlane.position.set(5,5,5);
+    let transform = new Ammo.btTransform();
+    transform.setIdentity();
+    transform.setOrigin( new Ammo.btVector3( pos.x, pos.y, pos.z ) );
+    transform.setRotation( new Ammo.btQuaternion( quat.x, quat.y, quat.z, quat.w ) );
+    let motionState = new Ammo.btDefaultMotionState( transform );
+
+    let colShape = new Ammo.btBoxShape( new Ammo.btVector3( scale.x * 0.5, scale.y * 0.5, scale.z * 0.5 ) );
+    colShape.setMargin( 0.05 );
+
+    let localInertia = new Ammo.btVector3( 0, 0, 0 );
+    colShape.calculateLocalInertia( mass, localInertia );
+
+    let rbInfo = new Ammo.btRigidBodyConstructionInfo( mass, motionState, colShape, localInertia );
+    let physics_body = new Ammo.btRigidBody( rbInfo );
+    blockPlane.userData.physicsBody = physics_body;
+    rigidBodies.push(blockPlane)
+    physicsWorld.addRigidBody( physics_body );
 
     // Create a group for the house
     const house = new THREE.Group();
@@ -270,10 +312,10 @@ function init() {
 
     //TO MAKE THE GROUND BUMPY, UNCOMMENT
     // // randomize the z component of each vertex to create textured snow
-    for (let i = 0; i < positions.count; i++) {
+    /*for (let i = 0; i < positions.count; i++) {
     //     // Randomly adjust the z position of each vertex
          positions.setZ(i, Math.random() * 1); // height variation
-    }
+    }*/
 
     // // Notify Three.js that the position data has changed
     positions.needsUpdate = true;
@@ -521,10 +563,33 @@ function init() {
 
 }
 
+function updatePhysics( deltaTime ){
+
+    // Step world
+    physicsWorld.stepSimulation( deltaTime, 10 );
+
+    // Update rigid bodies
+    for ( let i = 0; i < rigidBodies.length; i++ ) {
+        let objThree = rigidBodies[ i ];
+        let objAmmo = objThree.userData.physicsBody;
+        let ms = objAmmo.getMotionState();
+        if ( ms ) {
+            ms.getWorldTransform( tmpTrans );
+            let p = tmpTrans.getOrigin();
+            let q = tmpTrans.getRotation();
+            objThree.position.set( p.x(), p.y(), p.z() );
+            console.log("Updated position is " + p.x() + ", " + p.y() + " " + p.z());
+            objThree.quaternion.set( q.x(), q.y(), q.z(), q.w() );
+
+        }
+    }
+}
+
 function render() {
     requestAnimationFrame(render);
-
+    
     const delta = clock.getDelta(); // Get the time elapsed since the last call to getDelta
+    updatePhysics(delta);
     flycontrols.update(delta); // Update the controls based on the elapsed time
 
     renderer.render(scene, cameraFront);
@@ -578,4 +643,3 @@ window.addEventListener('keydown', function(event) {
     }
 });
 
-init();
