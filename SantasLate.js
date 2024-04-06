@@ -65,6 +65,8 @@ let Ax = 20, As = 2, Ay = 9, Az = 10;
 //let wx = 3.1, ws = 3.3, wy = 0, wz = 2.6;
 let alpha_x, alpha_s, alpha_y, alpha_z;
 
+let colGroupGround = 1, colGroupPresent = 2, colGroupCone=3;
+
 let wx = 1;   // Frequency for x
 let ws = 1.5; // Frequency for s
 let wy = 2;   // Frequency for y
@@ -100,7 +102,9 @@ function init() {
     
 
     scene = new THREE.Scene();
-   
+    const axesHelper = new THREE.AxesHelper( 10 );
+    scene.add( axesHelper );
+
     // Front View Camera
     cameraFront = new THREE.PerspectiveCamera(10, window.innerWidth / window.innerHeight, 0.1, 1000);
     cameraFront.position.set(0, 10, 100); // Adjust to see the ground
@@ -177,7 +181,7 @@ function init() {
             presentModel = gltf.scene; 
             scene.add(presentModel);
             presentModel.position.set(0,5,5);
-            presentModel.scale.set(0.25, 0.25, 0.25);
+            presentModel.scale.set(0.5, 0.5, 0.5);
         },
         function (xhr) {
             console.log((xhr.loaded / xhr.total * 100) + '% loaded');
@@ -187,12 +191,46 @@ function init() {
         }
     );
 
-    let pos = {x: 5, y: 5, z: 5};
-    let scale = {x: .5, y: .5, z: .5};
+    let pos = {x: 0.1, y: 10, z: 0};
+    let scale = {x: 1, y: 1, z: 1};
     let quat = {x: 0, y: 0, z: 0, w: 1};
-    let mass = 0.00001;
 
-    //threeJS Section
+    let pos_ground = {x: 0, y: -0.5, z: 0};
+    let scale_ground = {x: 20, y: 1, z:20};
+    let quat_ground = {x: 0, y: 0, z: 0, w: 1};
+    
+    let mass_ground = 0;
+    let mass = 10;
+
+    //Create Ground
+    let blockPlane_ground = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshPhongMaterial({color: 0xa0afa4}));
+
+    blockPlane_ground.position.set(pos_ground.x, pos_ground.y, pos_ground.z);
+    blockPlane_ground.scale.set(scale_ground.x, scale_ground.y, scale_ground.z);
+
+    blockPlane_ground.castShadow = true;
+    blockPlane_ground.receiveShadow = true;
+
+    scene.add(blockPlane_ground);
+    let transform_ground = new Ammo.btTransform();
+    transform_ground.setIdentity();
+    transform_ground.setOrigin( new Ammo.btVector3( pos_ground.x, pos_ground.y, pos_ground.z ) );
+    transform_ground.setRotation( new Ammo.btQuaternion( quat_ground.x, quat_ground.y, quat_ground.z, quat_ground.w ) );
+    let motionState_ground = new Ammo.btDefaultMotionState( transform_ground);
+
+    let colShape_ground = new Ammo.btBoxShape( new Ammo.btVector3( scale_ground.x*.5, scale_ground.y*.5, scale_ground.z*.5) );
+    colShape_ground.setMargin( 0.05 );
+
+    let localInertia_ground = new Ammo.btVector3( 0, 0, 0 );
+    colShape_ground.calculateLocalInertia( mass_ground, localInertia_ground );
+
+    let rbInfo_ground = new Ammo.btRigidBodyConstructionInfo( mass_ground, motionState_ground, colShape_ground, localInertia_ground );
+    let physics_body_ground = new Ammo.btRigidBody( rbInfo_ground );
+    blockPlane_ground.userData.physicsBody = physics_body_ground;
+    rigidBodies.push(blockPlane_ground)
+    physicsWorld.addRigidBody( physics_body_ground, colGroupGround, colGroupPresent);
+
+    //Create Present
     let blockPlane = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshPhongMaterial({color: 0xa0afa4}));
 
     blockPlane.position.set(pos.x, pos.y, pos.z);
@@ -201,15 +239,14 @@ function init() {
     blockPlane.castShadow = true;
     blockPlane.receiveShadow = true;
 
-    scene.add(blockPlane);
-    blockPlane.position.set(5,5,5);
+    //scene.add(blockPlane);
     let transform = new Ammo.btTransform();
     transform.setIdentity();
     transform.setOrigin( new Ammo.btVector3( pos.x, pos.y, pos.z ) );
     transform.setRotation( new Ammo.btQuaternion( quat.x, quat.y, quat.z, quat.w ) );
     let motionState = new Ammo.btDefaultMotionState( transform );
 
-    let colShape = new Ammo.btBoxShape( new Ammo.btVector3( scale.x * 0.5, scale.y * 0.5, scale.z * 0.5 ) );
+    let colShape = new Ammo.btBoxShape( new Ammo.btVector3( scale.x*.5, scale.y*.5, scale.z*.5) );
     colShape.setMargin( 0.05 );
 
     let localInertia = new Ammo.btVector3( 0, 0, 0 );
@@ -219,7 +256,7 @@ function init() {
     let physics_body = new Ammo.btRigidBody( rbInfo );
     blockPlane.userData.physicsBody = physics_body;
     rigidBodies.push(blockPlane)
-    physicsWorld.addRigidBody( physics_body );
+    physicsWorld.addRigidBody( physics_body, colGroupPresent, colGroupGround);
 
     // Create a group for the house
     const house = new THREE.Group();
@@ -245,6 +282,27 @@ function init() {
     roof.position.set(0, 5.2, 0); 
     roof.rotation.y = Math.PI / 4; // Align the roof's corners with the house body
     house.add(roof);  // Add the roof to the house group
+
+    let conePlane = new THREE.Mesh(new THREE.ConeGeometry(1,1.2,4), new THREE.MeshPhongMaterial({color: 0x00fa4}));
+
+    scene.add(conePlane);
+    let cone_transform = new Ammo.btTransform();
+    cone_transform.setIdentity();
+    cone_transform.setOrigin( new Ammo.btVector3( 0,2.5,0) );
+    cone_transform.setRotation( new Ammo.btQuaternion( 0,0,0,1) );
+    let cone_motionState = new Ammo.btDefaultMotionState( cone_transform );
+
+    let cone_colShape = new Ammo.btConeShape(1,1);
+    colShape.setMargin( 0.05 );
+
+    let cone_localInertia = new Ammo.btVector3( 0, 0, 0 );
+    colShape.calculateLocalInertia( 0, cone_localInertia );
+
+    let cone_rbInfo = new Ammo.btRigidBodyConstructionInfo( 0, cone_motionState, cone_colShape, cone_localInertia );
+    let cone_physics_body = new Ammo.btRigidBody( cone_rbInfo );
+    conePlane.userData.physicsBody = cone_physics_body;
+    rigidBodies.push(conePlane)
+    physicsWorld.addRigidBody( cone_physics_body, colGroupCone, colGroupPresent);
 
     
     // Roof TODO: Not showing
@@ -327,34 +385,34 @@ function init() {
      const ground = new THREE.Mesh(groundGeometry, groundMaterial);
      ground.position.y = 0;
      ground.rotation.x = -Math.PI / 2; // Rotate the ground to be horizontal
-    scene.add(ground);
+    //scene.add(ground);
 
     // Create a raycaster
-    const raycaster = new THREE.Raycaster();
+    //const raycaster = new THREE.Raycaster();
 
     // The starting point of the ray should be above the highest point of the ground
     // You might need to adjust this based on your scene's scale
-    const rayStartHeight = 100; 
+    //const rayStartHeight = 100; 
 
     // Set the raycaster starting point directly above the house's position
-    const rayOrigin = new THREE.Vector3(house.position.x, rayStartHeight, house.position.z);
-    raycaster.set(rayOrigin, new THREE.Vector3(0, -1, 0)); // pointing downwards
+    //const rayOrigin = new THREE.Vector3(house.position.x, rayStartHeight, house.position.z);
+    //raycaster.set(rayOrigin, new THREE.Vector3(0, -1, 0)); // pointing downwards
 
     // Calculate intersects
-    const intersects = raycaster.intersectObject(ground);
+    //const intersects = raycaster.intersectObject(ground);
 
     
-    if (intersects.length > 0) {
+    /*if (intersects.length > 0) {
         // Assuming the house's pivot is at its base, set the house on the ground
         // You might need to add half the house's height if the pivot is in the middle
         house.position.y = intersects[0].point.y + (houseBodyHeight / 2) + roofHeight;
     } else {
         console.warn('No intersection found - make sure the house is above the ground mesh');
-    }
+    }*/
 
 
-    const helper = new THREE.ArrowHelper(raycaster.ray.direction, raycaster.ray.origin, 100, 0xff0000);
-    scene.add(helper);
+    //const helper = new THREE.ArrowHelper(raycaster.ray.direction, raycaster.ray.origin, 100, 0xff0000);
+    //scene.add(helper);
     
    
     snowflakeCount = 10000;
@@ -578,9 +636,12 @@ function updatePhysics( deltaTime ){
             let p = tmpTrans.getOrigin();
             let q = tmpTrans.getRotation();
             objThree.position.set( p.x(), p.y(), p.z() );
-            console.log("Updated position is " + p.x() + ", " + p.y() + " " + p.z());
+            //console.log("Updated position is " + p.x() + ", " + p.y() + " " + p.z());
             objThree.quaternion.set( q.x(), q.y(), q.z(), q.w() );
-
+            if (i == 1) {
+                presentModel.position.set(p.x(), p.y(), p.z() )
+                presentModel.quaternion.set( q.x(), q.y(), q.z(), q.w() );
+            }
         }
     }
 }
