@@ -590,7 +590,7 @@ function loadModels(){
             presentModel = gltf.scene; 
             scene.add(presentModel);
             spawnBox();
-            presentModel.scale.set(0.15, 0.15, 0.15);
+            presentModel.scale.set(0.25, 0.25, 0.25);
         },
         function (xhr) {
             console.log((xhr.loaded / xhr.total * 100) + '% loaded');
@@ -752,7 +752,7 @@ function spawnPlane() {
 }
 
 function spawnBox() {
-    let scale = {x: .5, y: .5, z: .5};
+    let scale = {x: 1, y: 1, z: 1};
     let mass = 1;
 
     //remove previous box
