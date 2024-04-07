@@ -32,10 +32,11 @@ let snowflakes;
 // ammo physics objects declarations
 let colGroupPresent = 1, colGroupCone=2, colGroupGround = 3;
 let physicsWorld, rigidBodies = [];
+let ispresent = [];
 let conePositions = [];
 let collisionCounter = 0; 
 let collisionDistance = 3;
-let tmpTrans;
+let globalTrans;
 
 // curve properties, geometries and meshes
 let points; 
@@ -87,22 +88,22 @@ let santaMixer, raindeerMixer, action; // mixer for animations
 let speed = 30; //default speed for santa 
 
 
-function setupPhysicsWorld(){
+function initGlobalPhysics(){
 
-    let collisionConfiguration  = new Ammo.btDefaultCollisionConfiguration(),
-        dispatcher              = new Ammo.btCollisionDispatcher(collisionConfiguration),
-        overlappingPairCache    = new Ammo.btDbvtBroadphase(),
+    let collisionConf  = new Ammo.btDefaultCollisionConfiguration(),
+        dispatcher              = new Ammo.btCollisionDispatcher(collisionConf),
+        broadphase    = new Ammo.btDbvtBroadphase(),
         solver                  = new Ammo.btSequentialImpulseConstraintSolver();
 
-    physicsWorld           = new Ammo.btDiscreteDynamicsWorld(dispatcher, overlappingPairCache, solver, collisionConfiguration);
+    physicsWorld           = new Ammo.btDiscreteDynamicsWorld(dispatcher, broadphase, solver, collisionConf);
     physicsWorld.setGravity(new Ammo.btVector3(0, -10, 0));
 }
 
 Ammo().then( start )
             
 function start(){
-            tmpTrans = new Ammo.btTransform();
-            setupPhysicsWorld();
+            globalTrans = new Ammo.btTransform();
+            initGlobalPhysics();
             init();
 }
 
@@ -642,16 +643,19 @@ function updatePhysics( deltaTime ){
 
     // Update rigid bodies
     for ( let i = 0; i < rigidBodies.length; i++ ) {
+        //Get current rigid body and associated data
         let objThree = rigidBodies[ i ];
         let objAmmo = objThree.userData.physicsBody;
         let ms = objAmmo.getMotionState();
         if ( ms ) {
-            ms.getWorldTransform( tmpTrans );
-            let p = tmpTrans.getOrigin(); 
-            let q = tmpTrans.getRotation();
+            ms.getWorldTransform( globalTrans );
+            let p = globalTrans.getOrigin(); 
+            let q = globalTrans.getRotation();
+            //Set new position data
             objThree.position.set( p.x(), p.y(), p.z() );
-            //console.log("Updated position is " + p.x() + ", " + p.y() + " " + p.z());
             objThree.quaternion.set( q.x(), q.y(), q.z(), q.w() );
+
+            //Since the present is always the first element of the list
             if (i == 0) {
                 presentModel.position.set(p.x(), p.y(), p.z());
                 presentModel.quaternion.set(q.x(), q.y(), q.z(), q.w());
@@ -659,35 +663,39 @@ function updatePhysics( deltaTime ){
 
         }
     }
-    let dispatcher = physicsWorld.getDispatcher();
-    let numManifolds = dispatcher.getNumManifolds();
 }
 
+//Create the collision box for a house at a given coordinate.
 function createCone(x,y,z) {
  
     let coneGeometry = new THREE.ConeGeometry(3, 2.7, 4);
 
+    //Rotate and scale to the same size as the roof
     let coneMaterial = new THREE.MeshBasicMaterial({ color: '#FF0000' });
     let cone = new THREE.Mesh(coneGeometry, coneMaterial);
     cone.rotation.y = Math.PI / 4; 
     cone.scale.set(0.5,0.5,0.5);
     cone.position.set(x,y+1.5,z);
-
+    //Create a transform describing the initial motion state of the object
+    //In this case, imobile for the roof.
     let transform = new Ammo.btTransform();
     transform.setIdentity();
     transform.setOrigin( new Ammo.btVector3(x,y+1.5,z) );
     transform.setRotation( new Ammo.btQuaternion(0,0,0,0.92) );
     
+    //Set the intial motion state
     let motionState = new Ammo.btDefaultMotionState( transform );
 
-    let cone_physics = new Ammo.btConeShape( 3/2, 2.7/2);
-    cone_physics.setMargin(0.05);
+    //Define the collision shape
+    let cone_boundary = new Ammo.btConeShape( 3/2, 2.7/2);
+    cone_boundary.setMargin(0.05);
     const mass = 0;
 
     let localInertia = new Ammo.btVector3( 0, 0, 0 );
-    cone_physics.calculateLocalInertia( mass, localInertia );
-    
-    let rbInfo = new Ammo.btRigidBodyConstructionInfo( mass, motionState, cone_physics, localInertia );
+    cone_boundary.calculateLocalInertia( mass, localInertia );
+
+    //Construct the new rigid body from all of the above
+    let rbInfo = new Ammo.btRigidBodyConstructionInfo( mass, motionState, cone_boundary, localInertia );
     let body = new Ammo.btRigidBody( rbInfo );
 
     physicsWorld.addRigidBody( body, colGroupCone, colGroupPresent );
@@ -696,62 +704,62 @@ function createCone(x,y,z) {
 
 function spawnPlane() {
     let scale = {x: 500, y: 0.01 , z: 500};
-    let quat = {x: 0, y: 0, z: 0, w: 1};
     let mass = 0;
 
-    //threeJS Section
-    let blockPlane = new THREE.Mesh(new THREE.BoxGeometry(scale.x, scale.y, scale.z), new THREE.MeshPhongMaterial({color: 0xa0afa4}));
-    scene.add(blockPlane)
+    //Add the plane to the scene
+    let blockMesh = new THREE.Mesh(new THREE.BoxGeometry(scale.x, scale.y, scale.z), new THREE.MeshPhongMaterial({color: 0xa0afa4}));
+    scene.add(blockMesh)
 
+    //Define the transform
     let transform = new Ammo.btTransform();
     transform.setIdentity();
-    //transform.setOrigin(new Ammo.btVector3(20.0758903438028151, 10, 6.098957923824651));
     transform.setOrigin( new Ammo.btVector3(0, -10, 0));
-    transform.setRotation( new Ammo.btQuaternion( quat.x, quat.y, quat.z, quat.w ) );
+    transform.setRotation( new Ammo.btQuaternion( 0,0,0,1) );
     let motionState = new Ammo.btDefaultMotionState( transform );
-
+    
+    //Define collision shape
     let colShape = new Ammo.btBoxShape( new Ammo.btVector3( scale.x * 0.5, scale.y * 0.5, scale.z * 0.5 ) );
     colShape.setMargin( 0.05 );
 
     let localInertia = new Ammo.btVector3( 0, 0, 0 );
     colShape.calculateLocalInertia( mass, localInertia );
 
+    //Construct rigid body from the scene and add to world as well as rigidBodies array
     let rbInfo = new Ammo.btRigidBodyConstructionInfo( mass, motionState, colShape, localInertia );
     let physics_body = new Ammo.btRigidBody( rbInfo );
-    blockPlane.userData.physicsBody = physics_body;
-    rigidBodies.push(blockPlane)
+    blockMesh.userData.physicsBody = physics_body;
+    rigidBodies.push(blockMesh)
     physicsWorld.addRigidBody( physics_body, colGroupGround, colGroupPresent);
 }
 
 function spawnBox() {
     let scale = {x: .5, y: .5, z: .5};
-    let quat = {x: 0, y: 0, z: 0, w: 1};
     let mass = 1;
 
     //remove previous box
     rigidBodies.shift();
 
-    //threeJS Section
     let blockPlane = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshPhongMaterial({color: 0xa0afa4}));
     
-    
-    const pt_local = curve.getPoint(t);  
-    //console.log("present model: " + presentModel.position.x + " " + presentModel.position.y-0.5 + " " + presentModel.position.z);
+    //Shift model to santa location
+    const pt_local = curve.getPoint(t);
     presentModel.position.set(pt_local.x, pt_local.y, pt_local.z)
-    
+
+    //Define the transform
     let transform = new Ammo.btTransform();
     transform.setIdentity();
-    //transform.setOrigin(new Ammo.btVector3(20.0758903438028151, 10, 6.098957923824651));
     transform.setOrigin( new Ammo.btVector3(pt_local.x,pt_local.y,pt_local.z) );
-    transform.setRotation( new Ammo.btQuaternion( quat.x, quat.y, quat.z, quat.w ) );
+    transform.setRotation( new Ammo.btQuaternion( 0,0,0,1) );
     let motionState = new Ammo.btDefaultMotionState( transform );
 
+    //Defin the colision shape
     let colShape = new Ammo.btBoxShape( new Ammo.btVector3( scale.x * 0.5, scale.y * 0.5, scale.z * 0.5 ) );
     colShape.setMargin( 0.05 );
 
     let localInertia = new Ammo.btVector3( 0, 0, 0 );
     colShape.calculateLocalInertia( mass, localInertia );
 
+    //Construct rigid body and add to front of rigidBodies list
     let rbInfo = new Ammo.btRigidBodyConstructionInfo( mass, motionState, colShape, localInertia );
     let physics_body = new Ammo.btRigidBody( rbInfo );
     blockPlane.userData.physicsBody = physics_body;
