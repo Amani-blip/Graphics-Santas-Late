@@ -1,12 +1,16 @@
 /*
  * CSI4130 Assignment 4
  * Amani Farid 300173889
+ * Jordan Takefman
  * Model Credits: 
  * "Santa Sleigh" (https://skfb.ly/6XrxO) by PatelDev is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/).
  * "Jolly Santa" (https://skfb.ly/oONTG) by Tomato Owl is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/).
  * "Elk (WIP)" (https://skfb.ly/opVXK) by UlissesVinicios is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/).
+ * "Present" (https://skfb.ly/IJCX) by holtkamp is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/).
+ * "Candy cane" (https://skfb.ly/6UvJY) by CzernO is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/).
  */
 
+// importing libraries
 import './ammo.js'
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
@@ -15,50 +19,38 @@ import { FlyControls } from 'three/examples/jsm/controls/FlyControls.js';
 import { vec3 } from 'three/examples/jsm/nodes/shadernode/ShaderNode';
 import HarmonographicCurve from './HarmonographicCurve.js';
 
-let clock;
 
-let colGroupPresent = 1, colGroupCone=2;
+let clock = new THREE.Clock();
 let scene, renderer, camera, curve, gui;
 
-// models 
-
+// declaring all santa related models
 const modelGroup = new THREE.Group(); 
-let santaModel, sleighModel, presentModel, raindeerModel; 
+let santaModel, sleighModel, presentModel, raindeerModel, candyModel1, candyModel2; 
 const santaGroup = new THREE.Group();
-let t = 0;
-let n = 0; 
-let increment = 0.001;
-let physicsWorld, rigidBodies = [];
-let tmpTrans;
-
-
-let boolClear = false; 
-
 let snowflakes;
+
+// ammo physics objects declarations
+let colGroupPresent = 1, colGroupCone=2;
+let physicsWorld, rigidBodies = [];
+let conePositions = [];
+let collisionCounter = 0; 
+let collisionDistance = 3;
+let tmpTrans;
 
 // curve properties, geometries and meshes
 let points; 
 let mostLeftPoint; 
 let mostRightPoint; 
-
-clock = new THREE.Clock();
-
-// curve geometries and meshes
-
-let tubeGeometry = new THREE.TubeGeometry(curve,300, 0.08, 8, false);
-let tubeMaterial = new THREE.MeshBasicMaterial({ color: 'white'});
-let tubeMesh = new THREE.Mesh(tubeGeometry, tubeMaterial);
-
-//ground y position
-let groundY = -10; 
-let max_x = 300, max_y=300, max_z = 300; 
-let min_x = -300, min_z = -300;
-let min_y = groundY; 
-
-// to display or not display the curve from the gui
-var meshControls = {
-    myCheckbox: false // This will be represented as a checkbox
-};
+let boolClear = false; 
+let t = 0;
+let increment = 0.001;
+    // initial amplitudes a
+let Ax = 20, Ay = 9, Az = 10;
+//let wx = 3.1, ws = 3.3, wy = 0, wz = 2.6;
+let alpha_x, alpha_s, alpha_y, alpha_z;
+let wx = 1;   // Frequency for x
+let wy = 2;   // Frequency for y
+let wz = 3;   // Frequency for z
 
 // default values for the gui controls 
 var defaultControls = {
@@ -72,20 +64,25 @@ var defaultControls = {
     speed: 30
 }
 
+// to display or not display the curve from the gui
+var meshControls = {
+    myCheckbox: false // This will be represented as a checkbox
+};
+
+//curve geometries and meshes
+let tubeGeometry = new THREE.TubeGeometry(curve,300, 0.08, 8, false);
+let tubeMaterial = new THREE.MeshBasicMaterial({ color: 'white'});
+let tubeMesh = new THREE.Mesh(tubeGeometry, tubeMaterial);
+
+// ground properties 
+let groundY = -10; 
+let max_x = 300, max_y=300, max_z = 300; 
+let min_x = -300, min_z = -300;
+let min_y = groundY; 
+
 let flycontrols;
 
-// initial amplitudes a
-let Ax = 20, As = 2, Ay = 9, Az = 10;
-//let wx = 3.1, ws = 3.3, wy = 0, wz = 2.6;
-let alpha_x, alpha_s, alpha_y, alpha_z;
-
-let wx = 1;   // Frequency for x
-let ws = 1.5; // Frequency for s
-let wy = 2;   // Frequency for y
-let wz = 3;   // Frequency for z
-
-
-let santaMixer, raindeerMixer, action; // for animations
+let santaMixer, raindeerMixer, action; // mixer for animations
 
 let speed = 30; //default speed for santa 
 
@@ -112,17 +109,12 @@ function start(){
 
 function init() {
     // Scene
-
-    
-
     scene = new THREE.Scene();
    
     // Front View Camera
     camera = new THREE.PerspectiveCamera(10, window.innerWidth / window.innerHeight, 0.1, 1000);
     camera.position.set(0, 0, 200); // Adjust to see the ground
     camera.lookAt(0, 0, 0);
-    const axesHelper = new THREE.AxesHelper( 5 );
-    scene.add( axesHelper );
 
     renderer = new THREE.WebGLRenderer
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -136,7 +128,7 @@ function init() {
 
     // adding fly controls
     flycontrols = new FlyControls(camera, renderer.domElement);
-    flycontrols.movementSpeed = 10; 
+    flycontrols.movementSpeed = 40; 
     flycontrols.domElement = renderer.domElement;
     flycontrols.rollSpeed = Math.PI / 24;  
     flycontrols.autoForward = false;
@@ -164,7 +156,7 @@ function init() {
     let moonGeometry = new THREE.SphereGeometry(2, 62, 62);
     let moonMaterial = new THREE.MeshBasicMaterial({color: '#F7D560'});
     let moon = new THREE.Mesh(moonGeometry, moonMaterial);
-    moon.position.set(0, 15, 0); // Adjust position as needed
+    moon.position.set(0, 20, 0); // Adjust position as needed
     scene.add(moon);
 
     let moonLight = new THREE.PointLight('#E49B0F' , 1000, 100);
@@ -175,6 +167,7 @@ function init() {
     directionalLight.position.set(0, 10, 10);
     scene.add(directionalLight);
 
+    // create random positioning of the snowflakes and store them in the buffer
     let numSnowflake = 5000;
     let snowflakeGeometry = new THREE.BufferGeometry();
     let snowflakeVertices = [];
@@ -184,11 +177,11 @@ function init() {
         const z = Math.random()  * (max_z - min_z) + min_z;
         snowflakeVertices.push(x, y, z);
     }
-
     // 3 -> x, y, z values for the randomized snowflake position
     snowflakeGeometry.setAttribute('position', new THREE.Float32BufferAttribute(snowflakeVertices, 3));
 
-    let snowflakeMaterial = new THREE.PointsMaterial({ color: 'white', size: 0.5 });
+    // using points to represent each flake
+    let snowflakeMaterial = new THREE.PointsMaterial({ color: 'white', size: 1 });
     snowflakes = new THREE.Points(snowflakeGeometry, snowflakeMaterial);
 
     scene.add(snowflakes);
@@ -232,7 +225,6 @@ function init() {
         alpha_y = 1;
         alpha_z = 1;
         
-
         for (let i in gui.__controllers) {
             gui.__controllers[i].updateDisplay();
         }
@@ -267,10 +259,8 @@ function init() {
     // creates the initial curve
     updateHarmonographicCurve();
 
-    let housePositions = [];
-
     let numHouses = 15; 
-    let gap = 1/numHouses
+    let gap = 1/numHouses //distance between houses
 
     for (let i = 0; i < numHouses; i++) {
         let tp = i*gap; 
@@ -278,12 +268,46 @@ function init() {
         
         // position house at the x and z of the curve
         let house = createHouse();
-        console.log("x point: " + point.x+1 + "zpoint: " + point.z);
+        
         house.position.set(point.x+1, -8, point.z);
         let cone = createCone(point.x+1, -8, point.z);
+        conePositions.push({x: point.x+1, y: -8, z: point.z});
+
         // Add the house to the scene
         scene.add(house);
+
         //scene.add(cone);
+        
+    }
+
+    // create the rest of the bordering houses 
+    gap = 5; 
+
+    for (let i = 0; i < 10; i++) { //houses at the front and the back
+        let fronthouse = createHouse();
+        let backhouse = createHouse(); 
+        
+        fronthouse.position.set(i * gap-23, -8, 20);
+        fronthouse.rotateY(Math.PI);
+
+        backhouse.position.set(i * gap-23, -8, -30);
+
+        scene.add(fronthouse);
+        scene.add(backhouse);
+    }
+    
+    for (let i = 0; i < 10; i++) { //houses on the left and the right
+        let lefthouse = createHouse();
+        let righthouse = createHouse(); 
+        
+        lefthouse.position.set(gap-33, -8, i * gap-25);
+        lefthouse.rotateY(Math.PI/2);
+
+        righthouse.position.set(gap+22, -8, i * gap-25);
+        righthouse.rotateY(-Math.PI/2);
+
+        scene.add(lefthouse);
+        scene.add(righthouse);
     }
 
     // gui controls
@@ -300,6 +324,7 @@ function init() {
         defaultControls.displayMesh = value; 
     }
     );
+   
 
     // so that t curve parameter can be controlled and set back to 0 once it reaches 1
     setInterval(() => {
@@ -322,6 +347,9 @@ function init() {
                     mostRightPoint = points[i];
                 }
             }
+
+            let collisionDetected = false; 
+
 
             //Damping Note: Ax_n = (alpha_x^n)*Ax_0 is the direct calculation for Ax_n = Ax_n-1*alpha_x
             curve.Ax = (alpha_x**t)*Ax;
@@ -350,6 +378,25 @@ function init() {
         }
     }, 10); 
 
+    setInterval(function() {
+
+        if (presentModel){
+
+            // Iterate over the cone positions
+            for (let i = 0; i < conePositions.length; i++) {
+                // Calculate the distance from the present to the cone
+                let distance = presentModel.position.distanceTo(new THREE.Vector3(conePositions[i].x, conePositions[i].y, conePositions[i].z));
+
+                // If the distance is less than the collision distance, increment the counter
+                if (distance < collisionDistance) {
+                    collisionCounter++;
+                    document.getElementById('collisionCount').innerHTML = "Presents Delivered: " + collisionCounter;
+                }
+            } 
+        }
+    }, 800);
+    
+
     window.addEventListener('resize', onWindowResize, false);
 
     animate();
@@ -360,11 +407,9 @@ function createHouse(){
     // Creating a group for the house
     const house = new THREE.Group();
     
-    // Load the texture
+    // Loading and mapping the texture to the body of the house
     const textureLoader = new THREE.TextureLoader();
     const brickTexture = textureLoader.load('assets/textures/brick_texture.jpg'); 
-
-    // Create material with texture
     const brickMaterial = new THREE.MeshLambertMaterial({ map: brickTexture });
 
     // House body
@@ -374,7 +419,6 @@ function createHouse(){
     house.add(body);  // Add the body to the house group
 
     // Roof
-
     const roofGroup = new THREE.Group();
     const roofGeometry = new THREE.ConeGeometry(3, 2.7, 4);
     const roofMaterial = new THREE.MeshBasicMaterial({ color: '#2b1d0e' });
@@ -387,9 +431,9 @@ function createHouse(){
     const width = 1;
     const height = 2;
     const depth = 1;
-    const thickness = 0.1;  // Define the thickness of the walls
+    const thickness = 0.1;
 
-    // Create four boxes for the chimney walls
+    // Defining the four boxes for the chimney walls
     const wallFront = new THREE.Mesh(new THREE.BoxGeometry(width, height, thickness), brickMaterial);
     const wallBack = new THREE.Mesh(new THREE.BoxGeometry(width, height, thickness), brickMaterial);
     const wallLeft = new THREE.Mesh(new THREE.BoxGeometry(thickness, height, depth), brickMaterial);
@@ -407,7 +451,7 @@ function createHouse(){
     chimneyGroup.add(wallFront, wallBack, wallLeft, wallRight);
     chimneyGroup.position.set(1,3,0)
 
-    // Add the chimney to the 
+    // Add the chimney to the roof and the roof to the house
     roofGroup.add(chimneyGroup);
     house.add(roofGroup); 
 
@@ -419,14 +463,9 @@ function createHouse(){
     let plane2 = new THREE.Mesh(planeGeometry, planeMaterial);
     plane2.position.set(-0.8, 0.8, 1.55);
 
-    // Position the boxes
-    //box1.position.set(0.7, 0.8, 4);
-    //box2.position.set(window2.position.x, window2.position.y, window2.position.z - 1);
-
     // Add the boxes to the house
     house.add(plane1);
     house.add(plane2);
-
 
     // Window and door sizing
     const windowWidth = 0.3;
@@ -465,19 +504,19 @@ function createHouse(){
     createWindow(1, 0.5, 1.5);
     createWindow(0.5, 0.5, 1.5);
 
-    // Create and add the door
+    // add the door
     const door = new THREE.Mesh(doorGeometry, doorMaterial);
     door.position.set(0, -1.25, 1.5);
     house.add(door);
 
-    // Now scale the entire house group
+    // scale the entire house group down, smaller size is more aesthetic
     house.scale.set(0.5, 0.5, 0.5);
-
 
     return house; 
 
 }
 
+// helper function to load all the models into a group (which we then reposition / rotate using the curve)
 function loadModels(){
     const loader = new GLTFLoader();
 
@@ -530,7 +569,6 @@ function loadModels(){
             presentModel = gltf.scene; 
             scene.add(presentModel);
             spawnBox();
-            //presentModel.position.set(5,5,5);
             presentModel.scale.set(0.25, 0.25, 0.25);
         },
         function (xhr) {
@@ -569,7 +607,31 @@ function loadModels(){
             console.error('An error happened trying to load the raindeer model', error);
         }
     );
+    // Loading the candy cane models
+    loader.load(
+        'assets/candy_cane/scene.gltf', 
+        function (gltf) {
+            candyModel1 = gltf.scene.clone(); 
+            candyModel1.position.set(-10, -10, 70);
+            candyModel1.rotateY(Math.PI/2);
+            candyModel1.rotateX(-Math.PI/6);
+            candyModel1.scale.set(5, 5, 5);
+            scene.add(candyModel1);
     
+            candyModel2 = gltf.scene.clone();
+            candyModel2.position.set(10, -10, 70);
+            candyModel2.rotateY(-Math.PI/2);
+            candyModel2.rotateX(-Math.PI/6);
+            candyModel2.scale.set(5, 5, 5);
+            scene.add(candyModel2);
+        },
+        function (xhr) {
+            console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+        },
+        function (error) {
+            console.error('An error happened trying to load the candy canes', error);
+        }
+    );
 }
 
 function updatePhysics( deltaTime ){
@@ -596,10 +658,12 @@ function updatePhysics( deltaTime ){
 
         }
     }
+    let dispatcher = physicsWorld.getDispatcher();
+    let numManifolds = dispatcher.getNumManifolds();
 }
 
 function createCone(x,y,z) {
-    console.log("created cone");   
+ 
     let coneGeometry = new THREE.ConeGeometry(3, 2.7, 4);
 
     let coneMaterial = new THREE.MeshBasicMaterial({ color: '#FF0000' });
@@ -642,7 +706,7 @@ function spawnBox() {
 
     
     const pt_local = curve.getPoint(t);  
-    console.log("present model: " + presentModel.position.x + " " + presentModel.position.y-0.5 + " " + presentModel.position.z);
+    //console.log("present model: " + presentModel.position.x + " " + presentModel.position.y-0.5 + " " + presentModel.position.z);
     presentModel.position.set(pt_local.x, pt_local.y, pt_local.z)
     
     let transform = new Ammo.btTransform();
@@ -681,7 +745,7 @@ function animate() {
         raindeerMixer.update(delta);
     }
 
-    // Simulate snow falling by updating the positions of the snowflakes
+    //snow falling - update the y ever x, y, z, first y being at index 1 and incremented accordingly
     let positions = snowflakes.geometry.attributes.position.array;
     for (let i = 1; i < positions.length; i += 3) {  // Start at 1 to affect y coordinates
         positions[i] -= 0.1;  // Speed of falling snow
@@ -712,17 +776,14 @@ function onWindowResize() {
     renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
-
 // Space button click event listener
 window.addEventListener('keydown', function(event) {
-    // If the pressed key is the spacebar, play the animation
+    
     if (event.code === 'Space') {
         action.reset();
-        action.play();
+        action.play(); // play the animation
         const pt_local = curve.getPoint(t);  
-        console.log("present model: " + presentModel.position.x + " " + presentModel.position.y-0.5 + " " + presentModel.position.z);
         presentModel.position.set(pt_local.x,pt_local.y,pt_local.z);
         spawnBox();
-        console.log("present model: " + presentModel.position.x + " " + presentModel.position.y + " " + presentModel.position.z);
     }
 });
