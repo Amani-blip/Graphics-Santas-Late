@@ -17,7 +17,7 @@ import HarmonographicCurve from './HarmonographicCurve.js';
 
 let clock;
 
-let colGroupPresent = 2, colGroupCone=3;
+let colGroupPresent = 1, colGroupCone=2;
 let scene, renderer, camera, curve, gui;
 
 // models 
@@ -283,7 +283,7 @@ function init() {
         let cone = createCone(point.x+1, -8, point.z);
         // Add the house to the scene
         scene.add(house);
-        scene.add(cone);
+        //scene.add(cone);
     }
 
     // gui controls
@@ -584,13 +584,14 @@ function updatePhysics( deltaTime ){
         let ms = objAmmo.getMotionState();
         if ( ms ) {
             ms.getWorldTransform( tmpTrans );
-            let p = tmpTrans.getOrigin();
+            let p = tmpTrans.getOrigin(); 
             let q = tmpTrans.getRotation();
             objThree.position.set( p.x(), p.y(), p.z() );
             //console.log("Updated position is " + p.x() + ", " + p.y() + " " + p.z());
             objThree.quaternion.set( q.x(), q.y(), q.z(), q.w() );
             if (i == 0) {
                 presentModel.position.set(p.x(), p.y(), p.z());
+                presentModel.quaternion.set(q.x(), q.y(), q.z(), q.w());
             }
 
         }
@@ -607,23 +608,22 @@ function createCone(x,y,z) {
     cone.scale.set(0.5,0.5,0.5);
     cone.position.set(x,y+1.5,z);
 
+    let transform = new Ammo.btTransform();
+    transform.setIdentity();
+    transform.setOrigin( new Ammo.btVector3(x,y+1.5,z) );
+    transform.setRotation( new Ammo.btQuaternion(0,0,0,0.92) );
+    
+    let motionState = new Ammo.btDefaultMotionState( transform );
+
     let cone_physics = new Ammo.btConeShape( 3/2, 2.7/2);
+    cone_physics.setMargin(0.05);
     const mass = 0;
+
     let localInertia = new Ammo.btVector3( 0, 0, 0 );
     cone_physics.calculateLocalInertia( mass, localInertia );
     
-    const transform = new Ammo.btTransform();
-    transform.setIdentity();
-    transform.setOrigin( new Ammo.btVector3(x,y+1.5,z) );
-    let motionState = new Ammo.btDefaultMotionState( transform );
     let rbInfo = new Ammo.btRigidBodyConstructionInfo( mass, motionState, cone_physics, localInertia );
     let body = new Ammo.btRigidBody( rbInfo );
-
-    cone.userData.physicsBody = body;
-
-    cone.receiveShadow = true;
-    cone.castShadow = true;     
-    rigidBodies.push(cone);
 
     physicsWorld.addRigidBody( body, colGroupCone, colGroupPresent );
     return cone;
@@ -632,7 +632,7 @@ function createCone(x,y,z) {
 function spawnBox() {
     let scale = {x: .5, y: .5, z: .5};
     let quat = {x: 0, y: 0, z: 0, w: 1};
-    let mass = 0.00001;
+    let mass = 1;
 
     //remove previous box
     rigidBodies.shift();
@@ -643,11 +643,12 @@ function spawnBox() {
     
     const pt_local = curve.getPoint(t);  
     console.log("present model: " + presentModel.position.x + " " + presentModel.position.y-0.5 + " " + presentModel.position.z);
-    presentModel.position.set(pt_local.x,pt_local.y,pt_local.z)
+    presentModel.position.set(20.0758903438028151, 10, 6.098957923824651)
     
     let transform = new Ammo.btTransform();
     transform.setIdentity();
-    transform.setOrigin( new Ammo.btVector3(pt_local.x,pt_local.y,pt_local.z) );
+    transform.setOrigin(new Ammo.btVector3(20.0758903438028151, 10, 6.098957923824651));
+    //transform.setOrigin( new Ammo.btVector3(pt_local.x,pt_local.y,pt_local.z) );
     transform.setRotation( new Ammo.btQuaternion( quat.x, quat.y, quat.z, quat.w ) );
     let motionState = new Ammo.btDefaultMotionState( transform );
 
@@ -720,7 +721,7 @@ window.addEventListener('keydown', function(event) {
         action.play();
         const pt_local = curve.getPoint(t);  
         console.log("present model: " + presentModel.position.x + " " + presentModel.position.y-0.5 + " " + presentModel.position.z);
-        presentModel.position.set(pt_local.x,pt_local.y,pt_local.z);
+        presentModel.position.set(20.0758903438028151, 10, 6.098957923824651);
         spawnBox();
         console.log("present model: " + presentModel.position.x + " " + presentModel.position.y + " " + presentModel.position.z);
     }
