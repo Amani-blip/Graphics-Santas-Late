@@ -1,0 +1,9 @@
+@font-face {
+    font-family: holidayFont;
+    src: url(assets/fonts/Mercy\ Christole.ttf);
+}
+
+h1{
+    font-family: holidayFont;
+    text-align: center;
+}
