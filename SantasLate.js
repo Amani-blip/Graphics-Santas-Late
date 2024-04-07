@@ -17,6 +17,7 @@ import HarmonographicCurve from './HarmonographicCurve.js';
 
 let clock;
 
+let colGroupPresent = 2, colGroupCone=3;
 let scene, renderer, camera, curve, gui;
 
 // models 
@@ -140,40 +141,6 @@ function init() {
     flycontrols.rollSpeed = Math.PI / 24;  
     flycontrols.autoForward = false;
     flycontrols.dragToLook = true;
-
-    let pos = {x: 5, y: 5, z: 5};
-    let scale = {x: .5, y: .5, z: .5};
-    let quat = {x: 0, y: 0, z: 0, w: 1};
-    let mass = 0.00001;
-
-    //threeJS Section
-    let blockPlane = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshPhongMaterial({color: 0xa0afa4}));
-
-    blockPlane.position.set(pos.x, pos.y, pos.z);
-    blockPlane.scale.set(scale.x, scale.y, scale.z);
-
-    blockPlane.castShadow = true;
-    blockPlane.receiveShadow = true;
-
-    scene.add(blockPlane);
-    blockPlane.position.set(5,5,5);
-    let transform = new Ammo.btTransform();
-    transform.setIdentity();
-    transform.setOrigin( new Ammo.btVector3( pos.x, pos.y, pos.z ) );
-    transform.setRotation( new Ammo.btQuaternion( quat.x, quat.y, quat.z, quat.w ) );
-    let motionState = new Ammo.btDefaultMotionState( transform );
-
-    let colShape = new Ammo.btBoxShape( new Ammo.btVector3( scale.x * 0.5, scale.y * 0.5, scale.z * 0.5 ) );
-    colShape.setMargin( 0.05 );
-
-    let localInertia = new Ammo.btVector3( 0, 0, 0 );
-    colShape.calculateLocalInertia( mass, localInertia );
-
-    let rbInfo = new Ammo.btRigidBodyConstructionInfo( mass, motionState, colShape, localInertia );
-    let physics_body = new Ammo.btRigidBody( rbInfo );
-    blockPlane.userData.physicsBody = physics_body;
-    rigidBodies.push(blockPlane)
-    physicsWorld.addRigidBody( physics_body );
 
     // creating the snowy and rageddy ground
     const groundGeometry = new THREE.PlaneGeometry(500, 500, 250, 60);
@@ -311,9 +278,12 @@ function init() {
         
         // position house at the x and z of the curve
         let house = createHouse();
+        console.log("x point: " + point.x+1 + "zpoint: " + point.z);
         house.position.set(point.x+1, -8, point.z);
+        let cone = createCone(point.x+1, -8, point.z);
         // Add the house to the scene
         scene.add(house);
+        scene.add(cone);
     }
 
     // gui controls
@@ -404,6 +374,7 @@ function createHouse(){
     house.add(body);  // Add the body to the house group
 
     // Roof
+
     const roofGroup = new THREE.Group();
     const roofGeometry = new THREE.ConeGeometry(3, 2.7, 4);
     const roofMaterial = new THREE.MeshBasicMaterial({ color: '#2b1d0e' });
@@ -502,6 +473,7 @@ function createHouse(){
     // Now scale the entire house group
     house.scale.set(0.5, 0.5, 0.5);
 
+
     return house; 
 
 }
@@ -557,7 +529,8 @@ function loadModels(){
         function (gltf) {
             presentModel = gltf.scene; 
             scene.add(presentModel);
-            presentModel.position.set(5,5,5);
+            spawnBox();
+            //presentModel.position.set(5,5,5);
             presentModel.scale.set(0.25, 0.25, 0.25);
         },
         function (xhr) {
@@ -614,11 +587,82 @@ function updatePhysics( deltaTime ){
             let p = tmpTrans.getOrigin();
             let q = tmpTrans.getRotation();
             objThree.position.set( p.x(), p.y(), p.z() );
-            console.log("Updated position is " + p.x() + ", " + p.y() + " " + p.z());
+            //console.log("Updated position is " + p.x() + ", " + p.y() + " " + p.z());
             objThree.quaternion.set( q.x(), q.y(), q.z(), q.w() );
+            if (i == 0) {
+                presentModel.position.set(p.x(), p.y(), p.z());
+            }
 
         }
     }
+}
+
+function createCone(x,y,z) {
+    console.log("created cone");   
+    let coneGeometry = new THREE.ConeGeometry(3, 2.7, 4);
+
+    let coneMaterial = new THREE.MeshBasicMaterial({ color: '#FF0000' });
+    let cone = new THREE.Mesh(coneGeometry, coneMaterial);
+    cone.rotation.y = Math.PI / 4; 
+    cone.scale.set(0.5,0.5,0.5);
+    cone.position.set(x,y+1.5,z);
+
+    let cone_physics = new Ammo.btConeShape( 3/2, 2.7/2);
+    const mass = 0;
+    let localInertia = new Ammo.btVector3( 0, 0, 0 );
+    cone_physics.calculateLocalInertia( mass, localInertia );
+    
+    const transform = new Ammo.btTransform();
+    transform.setIdentity();
+    transform.setOrigin( new Ammo.btVector3(x,y+1.5,z) );
+    let motionState = new Ammo.btDefaultMotionState( transform );
+    let rbInfo = new Ammo.btRigidBodyConstructionInfo( mass, motionState, cone_physics, localInertia );
+    let body = new Ammo.btRigidBody( rbInfo );
+
+    cone.userData.physicsBody = body;
+
+    cone.receiveShadow = true;
+    cone.castShadow = true;     
+    rigidBodies.push(cone);
+
+    physicsWorld.addRigidBody( body, colGroupCone, colGroupPresent );
+    return cone;
+}
+
+function spawnBox() {
+    let scale = {x: .5, y: .5, z: .5};
+    let quat = {x: 0, y: 0, z: 0, w: 1};
+    let mass = 0.00001;
+
+    //remove previous box
+    rigidBodies.shift();
+
+    //threeJS Section
+    let blockPlane = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshPhongMaterial({color: 0xa0afa4}));
+
+    
+    const pt_local = curve.getPoint(t);  
+    console.log("present model: " + presentModel.position.x + " " + presentModel.position.y-0.5 + " " + presentModel.position.z);
+    presentModel.position.set(pt_local.x,pt_local.y,pt_local.z)
+    
+    let transform = new Ammo.btTransform();
+    transform.setIdentity();
+    transform.setOrigin( new Ammo.btVector3(pt_local.x,pt_local.y,pt_local.z) );
+    transform.setRotation( new Ammo.btQuaternion( quat.x, quat.y, quat.z, quat.w ) );
+    let motionState = new Ammo.btDefaultMotionState( transform );
+
+    let colShape = new Ammo.btBoxShape( new Ammo.btVector3( scale.x * 0.5, scale.y * 0.5, scale.z * 0.5 ) );
+    colShape.setMargin( 0.05 );
+
+    let localInertia = new Ammo.btVector3( 0, 0, 0 );
+    colShape.calculateLocalInertia( mass, localInertia );
+
+    let rbInfo = new Ammo.btRigidBodyConstructionInfo( mass, motionState, colShape, localInertia );
+    let physics_body = new Ammo.btRigidBody( rbInfo );
+    blockPlane.userData.physicsBody = physics_body;
+    rigidBodies.unshift(blockPlane)
+    physicsWorld.addRigidBody( physics_body, colGroupPresent, colGroupCone);
+
 }
 
 
@@ -676,7 +720,8 @@ window.addEventListener('keydown', function(event) {
         action.play();
         const pt_local = curve.getPoint(t);  
         console.log("present model: " + presentModel.position.x + " " + presentModel.position.y-0.5 + " " + presentModel.position.z);
-        presentModel.position.set(pt_local.x,pt_local.y,pt_local.z)
+        presentModel.position.set(pt_local.x,pt_local.y,pt_local.z);
+        spawnBox();
         console.log("present model: " + presentModel.position.x + " " + presentModel.position.y + " " + presentModel.position.z);
     }
 });
