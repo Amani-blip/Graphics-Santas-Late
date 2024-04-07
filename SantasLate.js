@@ -15,7 +15,7 @@ import { FlyControls } from 'three/examples/jsm/controls/FlyControls.js';
 import { vec3 } from 'three/examples/jsm/nodes/shadernode/ShaderNode';
 import HarmonographicCurve from './HarmonographicCurve.js';
 
-let clock = new THREE.Clock();
+let clock;
 
 let scene, renderer, camera, curve, gui;
 
@@ -24,6 +24,12 @@ let scene, renderer, camera, curve, gui;
 const modelGroup = new THREE.Group(); 
 let santaModel, sleighModel, presentModel, raindeerModel; 
 const santaGroup = new THREE.Group();
+let t = 0;
+let n = 0; 
+let increment = 0.001;
+let physicsWorld, rigidBodies = [];
+let tmpTrans;
+
 
 let boolClear = false; 
 
@@ -33,8 +39,11 @@ let snowflakes;
 let points; 
 let mostLeftPoint; 
 let mostRightPoint; 
-let t = 0;
-let increment = 0.001;
+
+clock = new THREE.Clock();
+
+// curve geometries and meshes
+
 let tubeGeometry = new THREE.TubeGeometry(curve,300, 0.08, 8, false);
 let tubeMaterial = new THREE.MeshBasicMaterial({ color: 'white'});
 let tubeMesh = new THREE.Mesh(tubeGeometry, tubeMaterial);
@@ -79,11 +88,6 @@ let santaMixer, raindeerMixer, action; // for animations
 
 let speed = 30; //default speed for santa 
 
-Ammo().then( start )
-            
-            function start(){
-                setupPhysicsWorld();
-    }
 
 function setupPhysicsWorld(){
 
@@ -94,11 +98,22 @@ function setupPhysicsWorld(){
 
     physicsWorld           = new Ammo.btDiscreteDynamicsWorld(dispatcher, overlappingPairCache, solver, collisionConfiguration);
     physicsWorld.setGravity(new Ammo.btVector3(0, -10, 0));
-
 }
+
+Ammo().then( start )
+            
+function start(){
+            tmpTrans = new Ammo.btTransform();
+            setupPhysicsWorld();
+            init();
+}
+
 
 function init() {
     // Scene
+
+    
+
     scene = new THREE.Scene();
    
     // Front View Camera
@@ -108,7 +123,7 @@ function init() {
     const axesHelper = new THREE.AxesHelper( 5 );
     scene.add( axesHelper );
 
-   renderer = new THREE.WebGLRenderer
+    renderer = new THREE.WebGLRenderer
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
 
@@ -126,6 +141,40 @@ function init() {
     flycontrols.autoForward = false;
     flycontrols.dragToLook = true;
 
+    let pos = {x: 5, y: 5, z: 5};
+    let scale = {x: .5, y: .5, z: .5};
+    let quat = {x: 0, y: 0, z: 0, w: 1};
+    let mass = 0.00001;
+
+    //threeJS Section
+    let blockPlane = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshPhongMaterial({color: 0xa0afa4}));
+
+    blockPlane.position.set(pos.x, pos.y, pos.z);
+    blockPlane.scale.set(scale.x, scale.y, scale.z);
+
+    blockPlane.castShadow = true;
+    blockPlane.receiveShadow = true;
+
+    scene.add(blockPlane);
+    blockPlane.position.set(5,5,5);
+    let transform = new Ammo.btTransform();
+    transform.setIdentity();
+    transform.setOrigin( new Ammo.btVector3( pos.x, pos.y, pos.z ) );
+    transform.setRotation( new Ammo.btQuaternion( quat.x, quat.y, quat.z, quat.w ) );
+    let motionState = new Ammo.btDefaultMotionState( transform );
+
+    let colShape = new Ammo.btBoxShape( new Ammo.btVector3( scale.x * 0.5, scale.y * 0.5, scale.z * 0.5 ) );
+    colShape.setMargin( 0.05 );
+
+    let localInertia = new Ammo.btVector3( 0, 0, 0 );
+    colShape.calculateLocalInertia( mass, localInertia );
+
+    let rbInfo = new Ammo.btRigidBodyConstructionInfo( mass, motionState, colShape, localInertia );
+    let physics_body = new Ammo.btRigidBody( rbInfo );
+    blockPlane.userData.physicsBody = physics_body;
+    rigidBodies.push(blockPlane)
+    physicsWorld.addRigidBody( physics_body );
+
     // creating the snowy and rageddy ground
     const groundGeometry = new THREE.PlaneGeometry(500, 500, 250, 60);
     const positions = groundGeometry.attributes.position;
@@ -136,6 +185,7 @@ function init() {
          positions.setZ(i, Math.random() * 2);
     }
     // re-calculate normals for the lighting calculations
+
     groundGeometry.computeVertexNormals();
 
      const groundMaterial = new THREE.MeshLambertMaterial({ color: 'white' });
@@ -549,10 +599,34 @@ function loadModels(){
     
 }
 
+function updatePhysics( deltaTime ){
+
+    // Step world
+    physicsWorld.stepSimulation( deltaTime, 10 );
+
+    // Update rigid bodies
+    for ( let i = 0; i < rigidBodies.length; i++ ) {
+        let objThree = rigidBodies[ i ];
+        let objAmmo = objThree.userData.physicsBody;
+        let ms = objAmmo.getMotionState();
+        if ( ms ) {
+            ms.getWorldTransform( tmpTrans );
+            let p = tmpTrans.getOrigin();
+            let q = tmpTrans.getRotation();
+            objThree.position.set( p.x(), p.y(), p.z() );
+            console.log("Updated position is " + p.x() + ", " + p.y() + " " + p.z());
+            objThree.quaternion.set( q.x(), q.y(), q.z(), q.w() );
+
+        }
+    }
+}
+
+
 function animate() {
     requestAnimationFrame(animate);
 
     const delta = clock.getDelta(); // Get the time elapsed since the last call to getDelta
+    updatePhysics(delta);
     flycontrols.update(delta); // Update the controls based on the elapsed time
 
     renderer.render(scene, camera);
@@ -606,5 +680,3 @@ window.addEventListener('keydown', function(event) {
         console.log("present model: " + presentModel.position.x + " " + presentModel.position.y + " " + presentModel.position.z);
     }
 });
-
-init();
