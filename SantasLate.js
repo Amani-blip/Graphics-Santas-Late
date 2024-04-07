@@ -87,6 +87,8 @@ let santaMixer, raindeerMixer, action; // mixer for animations
 
 let speed = 30; //default speed for santa 
 
+let presentPositions = []; // keep track of the dropped presents
+
 
 function initGlobalPhysics(){
 
@@ -384,19 +386,36 @@ function init() {
 
         if (presentModel){
 
+            
+
             // Iterate over the cone positions
             for (let i = 0; i < conePositions.length; i++) {
                 // Calculate the distance from the present to the cone
                 let distance = presentModel.position.distanceTo(new THREE.Vector3(conePositions[i].x, conePositions[i].y, conePositions[i].z));
 
-                // If the distance is less than the collision distance, increment the counter
+                // if the distance is less than the collision distance, increment the counter
                 if (distance < collisionDistance) {
-                    collisionCounter++;
-                    document.getElementById('collisionCount').innerHTML = "Presents Delivered: " + collisionCounter;
+
+                    // check the positions of the already dropped presents and verify if it exists
+                    let alreadyDropped = presentPositions.some(pos => 
+                        pos.x === presentModel.position.x && 
+                        pos.y === presentModel.position.y && 
+                        pos.z === presentModel.position.z
+                    );
+
+                    if(!alreadyDropped){
+                        // push the dropped present to keep track, and increment the collision counter
+                        presentPositions.push({x: presentModel.position.x, y: presentModel.position.y, z: presentModel.position.z});
+                        collisionCounter++;
+                        document.getElementById('collisionCount').innerHTML = "Presents Delivered: " + collisionCounter;
+
+                    }
+                
+                    
                 }
             } 
         }
-    }, 800);
+    }, 1500);
     
 
     window.addEventListener('resize', onWindowResize, false);
@@ -571,7 +590,7 @@ function loadModels(){
             presentModel = gltf.scene; 
             scene.add(presentModel);
             spawnBox();
-            presentModel.scale.set(0.25, 0.25, 0.25);
+            presentModel.scale.set(0.15, 0.15, 0.15);
         },
         function (xhr) {
             console.log((xhr.loaded / xhr.total * 100) + '% loaded');
