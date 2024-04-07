@@ -643,12 +643,12 @@ function spawnBox() {
     
     const pt_local = curve.getPoint(t);  
     console.log("present model: " + presentModel.position.x + " " + presentModel.position.y-0.5 + " " + presentModel.position.z);
-    presentModel.position.set(20.0758903438028151, 10, 6.098957923824651)
+    presentModel.position.set(pt_local.x, pt_local.y, pt_local.z)
     
     let transform = new Ammo.btTransform();
     transform.setIdentity();
-    transform.setOrigin(new Ammo.btVector3(20.0758903438028151, 10, 6.098957923824651));
-    //transform.setOrigin( new Ammo.btVector3(pt_local.x,pt_local.y,pt_local.z) );
+    //transform.setOrigin(new Ammo.btVector3(20.0758903438028151, 10, 6.098957923824651));
+    transform.setOrigin( new Ammo.btVector3(pt_local.x,pt_local.y,pt_local.z) );
     transform.setRotation( new Ammo.btQuaternion( quat.x, quat.y, quat.z, quat.w ) );
     let motionState = new Ammo.btDefaultMotionState( transform );
 
@@ -721,7 +721,7 @@ window.addEventListener('keydown', function(event) {
         action.play();
         const pt_local = curve.getPoint(t);  
         console.log("present model: " + presentModel.position.x + " " + presentModel.position.y-0.5 + " " + presentModel.position.z);
-        presentModel.position.set(20.0758903438028151, 10, 6.098957923824651);
+        presentModel.position.set(pt_local.x,pt_local.y,pt_local.z);
         spawnBox();
         console.log("present model: " + presentModel.position.x + " " + presentModel.position.y + " " + presentModel.position.z);
     }
