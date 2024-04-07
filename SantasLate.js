@@ -30,7 +30,7 @@ const santaGroup = new THREE.Group();
 let snowflakes;
 
 // ammo physics objects declarations
-let colGroupPresent = 1, colGroupCone=2;
+let colGroupPresent = 1, colGroupCone=2, colGroupGround = 3;
 let physicsWorld, rigidBodies = [];
 let conePositions = [];
 let collisionCounter = 0; 
@@ -152,6 +152,7 @@ function init() {
      ground.position.y = groundY;
      ground.rotation.x = -Math.PI / 2; // Rotate the ground to be horizontal
     scene.add(ground);
+    spawnPlane();
 
     let moonGeometry = new THREE.SphereGeometry(2, 62, 62);
     let moonMaterial = new THREE.MeshBasicMaterial({color: '#F7D560'});
@@ -693,6 +694,35 @@ function createCone(x,y,z) {
     return cone;
 }
 
+function spawnPlane() {
+    let scale = {x: 500, y: 0.01 , z: 500};
+    let quat = {x: 0, y: 0, z: 0, w: 1};
+    let mass = 0;
+
+    //threeJS Section
+    let blockPlane = new THREE.Mesh(new THREE.BoxGeometry(scale.x, scale.y, scale.z), new THREE.MeshPhongMaterial({color: 0xa0afa4}));
+    scene.add(blockPlane)
+
+    let transform = new Ammo.btTransform();
+    transform.setIdentity();
+    //transform.setOrigin(new Ammo.btVector3(20.0758903438028151, 10, 6.098957923824651));
+    transform.setOrigin( new Ammo.btVector3(0, -10, 0));
+    transform.setRotation( new Ammo.btQuaternion( quat.x, quat.y, quat.z, quat.w ) );
+    let motionState = new Ammo.btDefaultMotionState( transform );
+
+    let colShape = new Ammo.btBoxShape( new Ammo.btVector3( scale.x * 0.5, scale.y * 0.5, scale.z * 0.5 ) );
+    colShape.setMargin( 0.05 );
+
+    let localInertia = new Ammo.btVector3( 0, 0, 0 );
+    colShape.calculateLocalInertia( mass, localInertia );
+
+    let rbInfo = new Ammo.btRigidBodyConstructionInfo( mass, motionState, colShape, localInertia );
+    let physics_body = new Ammo.btRigidBody( rbInfo );
+    blockPlane.userData.physicsBody = physics_body;
+    rigidBodies.push(blockPlane)
+    physicsWorld.addRigidBody( physics_body, colGroupGround, colGroupPresent);
+}
+
 function spawnBox() {
     let scale = {x: .5, y: .5, z: .5};
     let quat = {x: 0, y: 0, z: 0, w: 1};
@@ -703,7 +733,7 @@ function spawnBox() {
 
     //threeJS Section
     let blockPlane = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshPhongMaterial({color: 0xa0afa4}));
-
+    
     
     const pt_local = curve.getPoint(t);  
     //console.log("present model: " + presentModel.position.x + " " + presentModel.position.y-0.5 + " " + presentModel.position.z);
@@ -726,7 +756,7 @@ function spawnBox() {
     let physics_body = new Ammo.btRigidBody( rbInfo );
     blockPlane.userData.physicsBody = physics_body;
     rigidBodies.unshift(blockPlane)
-    physicsWorld.addRigidBody( physics_body, colGroupPresent, colGroupCone);
+    physicsWorld.addRigidBody( physics_body, colGroupPresent, colGroupCone | colGroupGround);
 
 }
 
