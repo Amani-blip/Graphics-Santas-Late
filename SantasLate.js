@@ -1,14 +1,16 @@
 /*
  * CSI4130 Assignment 4
  * Amani Farid 300173889
- * Jordan Takefman
+ * Jordan Takefman 300171459
  * Model Credits: 
  * "Santa Sleigh" (https://skfb.ly/6XrxO) by PatelDev is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/).
  * "Jolly Santa" (https://skfb.ly/oONTG) by Tomato Owl is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/).
  * "Elk (WIP)" (https://skfb.ly/opVXK) by UlissesVinicios is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/).
  * "Present" (https://skfb.ly/IJCX) by holtkamp is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/).
  * "Candy cane" (https://skfb.ly/6UvJY) by CzernO is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/).
- */
+ *The following sites were used as reference material for 
+ * ammo.js : https://threejs.org/examples/physics_ammo_terrain.html, https://medium.com/@bluemagnificent/intro-to-javascript-3d-physics-using-ammo-js-and-three-js-dd48df81f591
+*/
 
 // importing libraries
 import './ammo.js'
